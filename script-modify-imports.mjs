@@ -13,6 +13,7 @@ function isValidFileExtension(filePath) {
 
 const extensions = ['.js', '.ts', '.tsx', '.jsx'];
 
+// removes the extension from the relative file path
 function removeSrcExtension(relativePath) {
     const splits = relativePath.split('.')
     const ext = splits[splits.length - 1]
@@ -24,6 +25,7 @@ function removeSrcExtension(relativePath) {
     }
 }
 
+// relaces the old source with the newly created source
 function replaceFileName(filePath, newFileName, importIsFromIndex = false) {
     if(importIsFromIndex) {
         if(!path.basename(filePath).includes('index')) {
@@ -66,6 +68,7 @@ function createNamedExport(j, exportName, importName, src, kind = 'value') {
       );
 }
 
+// Break down wildcard exports into individual items
 function modifyWildcardExports(root, j, filePath) {
     let wildcardExportReplacements = []
     let wildcardExportReplacementsNames = []
@@ -97,7 +100,6 @@ function modifyWildcardExports(root, j, filePath) {
             }
         }
         else {
-            // console.log(filePath, absSrc)
             if(absSrc in utilsExports) {
                 for(const exp in utilsExports[absSrc]) {
                     if(exp != 'CREATE_UTILS_OPTION') {
@@ -229,7 +231,6 @@ function splitImportDeclarations(root, j, filePath) {
         }
     }
 
-    // Traverse the AST to find ImportDeclaration nodes and replace them if needed
     root.find(j.ImportDeclaration).forEach(pth => {
         const node = pth.node;
         if (node.specifiers.length > 1) {
@@ -262,6 +263,7 @@ function replaceObjectReferences(root, j, obj) {
     return propertyNames;
 }
 
+// resolves the declarations which are re-exports of a target module
 function evaluateReExport(
     root,
     j,
@@ -311,6 +313,8 @@ function evaluateReExport(
         console.error('Error in evaluating exports', err.message)
     }
 }
+
+// resolves a specific direct import from a target module
 function modifyImport(
     root,
     j,
@@ -367,10 +371,6 @@ function modifyImport(
         j(pth).insertBefore(objConstantDeclaration);
       }
       else{
-        // let relativePath = path.relative(path.dirname(filePath), importPath);
-        // if (!relativePath.startsWith('../') && !relativePath.startsWith('./')) {
-        //     relativePath = './' + relativePath;
-        // }
         let relativePath = pth.node.source.value
         const importIsFromIndex = fileNameWithExtension.includes('index')
         const replacement = utilsDir
@@ -395,6 +395,7 @@ function modifyImport(
     j(pth).remove();
 }
 
+// resolves a specific export from a target module
 function modifyExport(
     root,
     j,
@@ -449,6 +450,7 @@ function resolveTsConfigPath(src) {
     return null;
 }
 
+// returns the absolute path of a source relative to the importing modules
 function resolveSrcPath(src, filePath) {
     let alias = false
     if (src[0] == '.' || src[0] == '/') {
@@ -485,6 +487,7 @@ function resolveSrcPath(src, filePath) {
     return src;
 }
 
+// Method to resolve a specific type import/export
 function evaluateTypeImport(root, j, pth, filePath, importPath, nodeType = 'import') {
     try{
         let utilsDir = utilsTypes[importPath].CREATE_UTILS_OPTION
@@ -574,6 +577,7 @@ function evaluateTypeImport(root, j, pth, filePath, importPath, nodeType = 'impo
 
 }
 
+// Sequentially resolves each import/re-export declaration
 function getImportedModules (root, j, filePath, moduleImports) {
     try {
         root.find(j.ImportDeclaration).forEach(pth => {
@@ -635,6 +639,7 @@ function getImportedModules (root, j, filePath, moduleImports) {
     }
     
 }
+// babel parser with added typescript support
 export const parser = {
     parse(source) {
       return parse(source, {

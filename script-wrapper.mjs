@@ -38,7 +38,6 @@ const argv = yargs(hideBin(process.argv))
   .alias('help', 'h')
   .argv;
 
-// Access the parsed arguments
 const splitDir = argv.splitDir;
 const modifyDir = argv.modifyDir;
 const targetName = argv.targetName;

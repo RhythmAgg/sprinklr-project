@@ -16,10 +16,7 @@ const PROJECT_DIRECTORY = __dirname
 let utilsName = process.argv;
 let createUtils = ''
 
-function getFileName(loc) {
-  return path.parse(loc).name;
-}
-
+// Finds the non-export type aliases at the module scope
 function getModuleTypes(root, j, nonExportTypes) {
   root.find(j.TSTypeAliasDeclaration).forEach(pth => {
     const parent = pth.parent.node;
@@ -29,6 +26,7 @@ function getModuleTypes(root, j, nonExportTypes) {
   });
 }
 
+// Implements logic to get the dependencies of an AST node
 function getNodeDependencies(j, node, dependencies) {
   // Collect all identifiers within the node
   const identifiers = new Set();
@@ -117,6 +115,7 @@ function getNodeDependencies(j, node, dependencies) {
   }
 }
 
+// Clasifies an export as an object or non-object
 function checkIfExportsAreObjects(root, j, exports) {
   let exportTypes = {};
   exports.forEach(exp => {
@@ -154,6 +153,7 @@ function addFileExport(filePath, name, exportedName, type, indexFile = false, ob
   }
 }
 
+// returns the path of the source with added extensions and file name
 function resolveSrcPath(src) {
   const extensions = ['.js', '.ts', '.tsx', '.jsx'];
   if(fs.existsSync(src) && fs.statSync(src).isFile()) {
@@ -176,6 +176,7 @@ function resolveSrcPath(src) {
   return src;
 }
 
+// method to update the re-exports of the module
 function getReExports(node, filePath, reExports, j){
   if(node.type === 'ExportNamedDeclaration') {
     node.specifiers.forEach(specifier => {
@@ -188,8 +189,6 @@ function getReExports(node, filePath, reExports, j){
   } else if(node.type === 'ExportAllDeclaration') {
     const kind = node.exportKind
     let absPath = resolveSrcPath(path.join(path.dirname(filePath), node.source.value))
-    // let externalExports = [];
-    // storepathforNonindex(absPath, externalExports, j);
     const [namedExports, externalReExports, exportedTypes] = getExportNames(absPath, j, false)
     if(kind === 'type') {
       for(const type in exportedTypes) {
@@ -219,6 +218,7 @@ function getReExports(node, filePath, reExports, j){
   }
 }
 
+// returns the direct, re-exports and exported types of the module
 function getExportNames(filePath, j, indexFile = false) {
   try{
     let exports = []
@@ -306,7 +306,6 @@ function getExportNames(filePath, j, indexFile = false) {
         getReExports(pth.node, filePath, reExports, j)
     })
 
-    // console.log(exports, reExports)
     return [exports, reExports, exportedTypes]
   } catch(err) {
     console.log(`Error reading exports of ${filePath}`, err.message)
@@ -314,6 +313,7 @@ function getExportNames(filePath, j, indexFile = false) {
   }
 }
 
+// Checks if a AST node for an indentifier is required in the file or not
 function isRequiredInFile(node, identifierName) {
   if(node == null)
       return false;
@@ -365,6 +365,7 @@ function createNamedImport(j, importName, localName,  src, kind = 'value') {
   );
 }
 
+// Implements the noval graph algorithm for updating dependency graph with a single exports as source
 function getHelperCount(root, j, vis, nodeName, exported, nodeDependencies) {
   let localDependencies = new Set()
   root.find(j.Identifier, { name: nodeName }).forEach((pth) => {
@@ -408,6 +409,7 @@ function getHelperCount(root, j, vis, nodeName, exported, nodeDependencies) {
   
 }
 
+// Update code of helper modules
 function addToHelperModule(root, j, nodeName, vis, helperName, exported, helpers) {
   if(nodeName != helperName && (nodeName in moduleTypes) && moduleTypes[nodeName].export) {
     const importName = moduleTypes[nodeName].exportName
@@ -444,7 +446,6 @@ function addToHelperModule(root, j, nodeName, vis, helperName, exported, helpers
     const newImport = createDefaultImport(j, nodeName, `./${nodeName}`)
 
     if (!vis.has(newImport)) {
-      // console.log(helpers, helperName)
       helpers[helperName].push(newImport);
       vis.add(newImport);
     }
@@ -502,7 +503,6 @@ function addToHelperModule(root, j, nodeName, vis, helperName, exported, helpers
       }
     })
     helpers[helperName] = [...helpers[helperName], ...collectPrimaryCode]
-    // console.log(helpers[helperName], nodeName, helperName, collectPrimaryCode)
     if(helpers[helperName].length > 0)
       helpers[helperName].push(j.exportDefaultDeclaration(j.identifier(helperName)))
     else
@@ -511,6 +511,7 @@ function addToHelperModule(root, j, nodeName, vis, helperName, exported, helpers
 
 }
 
+// Update code of export modules
 function addToExportModule(root, j, nodeName, code, vis, mainExport, exported, helpers, typeExport = false) {
   if(nodeName != mainExport && (nodeName in moduleTypes) && moduleTypes[nodeName].export) {
     let newImport;
@@ -567,7 +568,6 @@ function addToExportModule(root, j, nodeName, code, vis, mainExport, exported, h
     }
   } else if(nodeName != mainExport && !(nodeName in moduleTypes)) {
     let helpVis = new Set()
-    // console.log(mainExport, nodeName)
     helpers[nodeName] = []
     addToHelperModule(root, j, nodeName, helpVis, nodeName, exported, helpers)
     if(nodeName in helpers) {
@@ -581,13 +581,6 @@ function addToExportModule(root, j, nodeName, code, vis, mainExport, exported, h
       }else {
         helpers[nodeName].pop()
         helpers[nodeName].forEach(node => {
-          // if (node.type === 'ImportDeclaration') {
-          //   if (node.source.value.startsWith('../newModules')) {
-          //     node.source.value = node.source.value.replace('../newModules', '.');
-          //   } else if (node.source.value.startsWith('./')) {
-          //     node.source.value = node.source.value.replace('./', '../helperModules/');
-          //   }
-          // }
           if (!vis.has(node)) {
             code[mainExport].push(node);
             vis.add(node);
@@ -606,7 +599,6 @@ function addToExportModule(root, j, nodeName, code, vis, mainExport, exported, h
       }
       
       if (!vis.has(pth.node) && isRequiredInFile(pth.node, nodeName)) {
-        // code[mainExport].push(pth.node);
         collectPrimaryCode.push(pth.node)
         getNodeDependencies(j, pth.node, nodeDependencies)
         vis.add(pth.node);
@@ -654,6 +646,7 @@ function sortByExports(code, exp) {
   });
 }
 
+// Creates the export modules
 function createIndependentModules(
   j,
   exp,
@@ -661,7 +654,6 @@ function createIndependentModules(
   typeExport = false) {
     let program = j.program(code[exp]);
     const Content = j(program).toSource();
-    // const subDir = typeExport?'newTypes':'newModules'
     const subDir = createUtils?'utils':''
     const localpath = createUtils?path.join(newDirectory, `./utils/${exp}${fileExtension}`):path.join(newDirectory, `./${exp}${fileExtension}`)
     if (!fs.existsSync(path.join(newDirectory, `./${subDir}`))) {
@@ -673,6 +665,8 @@ function createIndependentModules(
       fs.writeFileSync(localpath, Content, "utf8");
     }
 }
+
+// Creates the helper modules
 function createHelperModules(
   j,
   helpers
@@ -683,7 +677,6 @@ function createHelperModules(
     const Content = j(program).toSource();
     const subDir = createUtils?'utils':''
     const localpath = createUtils?path.join(newDirectory, `./utils/${helperName}${fileExtension}`):path.join(newDirectory, `./${helperName}${fileExtension}`)
-    // const localpath = path.join(ENTRY_DIR, `./helperModules/${helperName}${fileExtension}`);
     if (!fs.existsSync(path.join(newDirectory, `./${subDir}`))) {
       fs.mkdirSync(path.join(newDirectory, `./${subDir}`));
     }
@@ -695,6 +688,7 @@ function createHelperModules(
   })
 }
 
+// Split the non-object exports into separate modules
 function splitNonObjectCode(
   root,
   j,
@@ -707,13 +701,13 @@ function splitNonObjectCode(
     code[exp] = [];
     let vis = new Set();
     addToExportModule(root, j, exp, code, vis, exp, exported, helpers)
-    // code[exp].reverse()
     code[exp] = sortByImports(code, exp)
     code[exp] = sortByExports(code, exp)
     createIndependentModules(j, exp, code)
   });
 }
 
+// spli the type exporst into separate modules
 function splitTypesCode(
   root,
   j,
@@ -726,13 +720,13 @@ function splitTypesCode(
     code[exp] = [];
     let vis = new Set();
     addToExportModule(root, j, exp, code, vis, exp, exported, helpers, true)
-    // code[exp].reverse()
     code[exp] = sortByImports(code, exp)
     code[exp] = sortByExports(code, exp)
     createIndependentModules(j, exp, code, true)
   });
 }
 
+// Maps properties of an object export with its value node
 function getObjectExportProps(
   root,
   j,
@@ -776,6 +770,7 @@ function checkKeyEqualsValue(k, key, value) {
     return false;
 }
 
+// split object exports into separate modules for each of its properties
 function splitObjectExports(
   root,
   j,
@@ -787,8 +782,6 @@ function splitObjectExports(
   exports.forEach((exp) => {
     let props = {}
     getObjectExportProps(root, j, exp, props)
-    // if(exp === 'READER')
-    //   console.log(props)
     exported.push(...Object.keys(props))
     Object.keys(props).forEach(prop => {
       let nodeDependencies = new Set()
@@ -797,7 +790,6 @@ function splitObjectExports(
       } catch(err) {
         console.log('Error: ',exp, prop, props)
       }
-      // console.log(prop, nodeDependencies)
       code[prop] = [];
       let vis = new Set();
       Array.from(nodeDependencies).forEach(dependency => {
@@ -806,13 +798,8 @@ function splitObjectExports(
           else
             addToExportModule(root, j, dependency, code, vis, prop, exported, helpers)
       })
-      // code[prop].reverse()
       if(!checkKeyEqualsValue(j, prop, props[prop]))
       {
-        // if(nodeDependencies.has(prop))
-        //   code[prop].push(createAssignmentNode(j, prop, props[prop]))
-        // else
-        //   code[prop].push(createConstNode(j, prop, props[prop]))
         code[prop].push(createConstNode(j, prop, props[prop]))
       }
       code[prop].push(j.exportDefaultDeclaration(j.identifier(prop)))
@@ -822,18 +809,18 @@ function splitObjectExports(
   });
 
 }
+
+// splits multiple together variable declarations into separate declarations
 function replaceVariableDeclarations(
   root,
   j
 ) {
-  // Function to split a VariableDeclaration node into multiple nodes
   function splitVariableDeclarations(variableDeclarationNode) {
     return variableDeclarationNode.declarations.map(declaration => {
       return j.variableDeclaration(variableDeclarationNode.kind, [declaration]);
     });
   }
 
-  // Traverse the AST to find VariableDeclaration nodes and replace them if needed
   root.find(j.VariableDeclaration).forEach(pth => {
     const node = pth.node;
     if (node.declarations.length > 1) {
@@ -842,9 +829,10 @@ function replaceVariableDeclarations(
     }
   });
 }
+
+// splits multiple together import declarations into separate declarations
 function splitImportDeclarations(root, j) {
   moduleImports = {}
-  // Function to split an ImportDeclaration node into multiple nodes
   function splitImportDeclaration(importDeclarationNode) {
     return importDeclarationNode.specifiers.map(specifier => {
       const importKind = importDeclarationNode.importKind
@@ -854,7 +842,6 @@ function splitImportDeclarations(root, j) {
     });
   }
 
-  // Traverse the AST to find ImportDeclaration nodes and replace them if needed
   root.find(j.ImportDeclaration).forEach(pth => {
     const node = pth.node;
     if (node.specifiers.length > 1) {
@@ -865,6 +852,8 @@ function splitImportDeclarations(root, j) {
     }
   });
 }
+
+// Create property Aliases for avoiding naming conflicts
 function replaceObjectMemberExpressions(
   root,
   j,
@@ -874,7 +863,6 @@ function replaceObjectMemberExpressions(
     .forEach(pth => {
       const { object, property } = pth.node;
       if ((object.type === 'Identifier' && objectExports.includes(object.name)) || object.type === 'ThisExpression') {
-        // Replace the MemberExpression with the property identifier
         const replacement = `${property.name}_from_${object.type === 'ThisExpression'?'this':object.name}`
         propertiesAliases[replacement] = property.name 
         j(pth).replaceWith(j.identifier(replacement));
@@ -882,6 +870,7 @@ function replaceObjectMemberExpressions(
     });
 }
 
+// Modifies the re-export source primarily for newly created index file
 function modifyReExportSources(
   root,
   j
@@ -933,6 +922,7 @@ function modifyReExportSources(
     });
 }
 
+// Modifies the import sources relative to the new path
 function modifyImportSources(
   root,
   j
@@ -961,6 +951,7 @@ function modifyImportSources(
     });
 }
 
+// split multiple export specifier into separate export declarations
 function separateExportSpecifiers(root, j) {
   root.find(j.ExportNamedDeclaration)
     .forEach(pth => {
@@ -981,6 +972,7 @@ function separateExportSpecifiers(root, j) {
     });
 }
 
+// Collects the exports and builds the overall dependency graph 
 function getHelperGraph( root, j, objectExports, nonObjectExports, typeExports ) {
   let exported = [...nonObjectExports]
   let exportedProps = {}
@@ -1018,7 +1010,6 @@ function getHelperGraph( root, j, objectExports, nonObjectExports, typeExports )
     let vis = new Set()
     let nodeDependencies = new Set()
     getHelperCount(root, j, vis, exp, exported, nodeDependencies)
-    // console.log(nodeDependencies.has('getAccountTypesFromAccounts'))
   })
   Object.keys(exportedProps).forEach(exp => {
     let vis = new Set()
@@ -1051,7 +1042,6 @@ function getHelperGraph( root, j, objectExports, nonObjectExports, typeExports )
         }
       }
       nodeDependencies.add(dependency)
-    // console.log(nodeDependencies.has('getAccountTypesFromAccounts'))
   })
 })
 }
@@ -1090,7 +1080,6 @@ function processExports(filePath, j) {
     const exportTypes = checkIfExportsAreObjects(root, j, exports)
     const nonObjectExports = exports.filter(exp => exportTypes[exp] == false)
     let exported = [...nonObjectExports]
-    // exported = []
     const objectExports = exports.filter(exp => exportTypes[exp] == true)
     nonObjectExports.forEach(exp => {
       fileExports[absPath][exp].obj = false
@@ -1113,7 +1102,6 @@ function processExports(filePath, j) {
     replaceObjectMemberExpressions(root, j, objectExports)
     let helpers = {}
     getHelperGraph(root, j, objectExports, nonObjectExports, typeExports)
-    // console.log(helperCounts)
     splitObjectExports(root, j, objectExports, exported, helpers);
     splitNonObjectCode(root, j, nonObjectExports, exported, helpers);
     splitTypesCode(root, j, typeExports, exported, helpers)
@@ -1159,13 +1147,6 @@ function processExports(filePath, j) {
       fileTypes = {...currentUtilsTypes, ...fileTypes}
     }
     fs.writeFileSync(utilsTypes, JSON.stringify(fileTypes))
-
-    
-    // console.log(filePath, fileReExports)
-
-    let dependencies = {}
-
-    return dependencies
 }
 
 // export const parser = "babel";
@@ -1199,7 +1180,6 @@ export const parser = {
   },
 }
 export default (fileName, api, options) => {
-    // jscodeshift provides utilities for accessing the AST of the code
     const j = api.jscodeshift;
     const root = j(fileName.source); 
 
@@ -1209,8 +1189,6 @@ export default (fileName, api, options) => {
     const fileNameWithExtension = path.basename(fileName.path);
 
     const fileNameWithoutExtension = path.parse(fileNameWithExtension).name;
-
-    // console.log(path.join(path.dirname(fileName.path), './'))
     
     if(path.basename(fileName.path).includes(utilsName)) {
       ENTRY_DIR = path.dirname(fileName.path)

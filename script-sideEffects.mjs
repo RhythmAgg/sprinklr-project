@@ -2,7 +2,6 @@ import {promises as fs} from 'fs';
 import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// import { parse } from '@typescript-eslint/typescript-estree';
 import { parse } from '@babel/parser';
 const script_filename = fileURLToPath(import.meta.url); 
 const PROJECT_DIRECTORY = path.dirname(script_filename);
@@ -29,7 +28,6 @@ async function getImportedModules (code, filePath) {
     let currentImports = new Set()
 
     function resolveSrcPath(src) {
-        // console.log(src)
         if (src[0] == '.' || src[0] == '/') {
             src = path.resolve(path.dirname(filePath), src);
         }else if(src[0] == '@') {
@@ -61,7 +59,7 @@ async function getImportedModules (code, filePath) {
     }
     return new Promise((resolve, reject) => {
         try {
-            if(filePath.includes('.json')) { // Include JSON files since they always introduce Side Effects when imported
+            if(filePath.includes('.json')) { 
                 resolve(true)
             }
             const ast = parse(String(code), {
@@ -134,7 +132,7 @@ function isPureCallExpression(node) {
 async function hasSideEffects(code, filePath) {
     return new Promise((resolve, reject) => {
         try {
-            if(filePath.includes('.json')) { // Include JSON files since they always introduce Side Effects when imported
+            if(filePath.includes('.json')) {
                 resolve(true)
                 return
             }
@@ -157,7 +155,8 @@ async function hasSideEffects(code, filePath) {
                     case 'File':
                         return traverse(node.program)
                     case 'CallExpression':
-                        if(isPureCallExpression(node)) // Pure annotated Calls should be ignored
+                        // Pure annotated Calls should be ignored
+                        if(isPureCallExpression(node)) 
                             return false
                         else if(node.callee.name === 'dynamic') // Dynamic Imports are used for code-splitting in most cases and hence can be considered free
                             return false
@@ -270,7 +269,6 @@ async function hasSideEffects(code, filePath) {
 
 const files = await getFiles(ENTRY_DIR)
                 .then(files => {
-                    // return files;
                     return files.filter(file => isValidFileExtension(file))
                 })
                 .catch(e => console.error(e));
@@ -294,7 +292,6 @@ async function getSideEffect(importModules) {
             const hasEffects = await hasSideEffects(moduleCode, filePath)
             if(hasEffects) {
                 return path.relative(PROJECT_DIRECTORY, filePath)
-                // return filePath
             } else{
                 return null
             }
@@ -306,7 +303,6 @@ async function getSideEffect(importModules) {
 
 const sideEffects = await getImportSource()
     .then(async res => {
-        // console.log(moduleImports)
         return await getSideEffect(Array.from(moduleImports).filter(imp => imp != null))
     })
     .then(sideEffects => sideEffects.filter(file => file != null))
