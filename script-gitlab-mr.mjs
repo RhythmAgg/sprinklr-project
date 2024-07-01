@@ -3,9 +3,9 @@ import { promisify } from 'util';
 
 const execPromise = promisify(exec);
 
-const GITLAB_URL = "https://gitlab.com";  
-const PROJECT_ID = 59441978; 
-const ACCESS_TOKEN = "glpat-LHZweSe2QM9Uybd8futr"; 
+const GITLAB_URL = "https://prod-gitlab-ui.sprinklr.com/";  
+const PROJECT_ID = 1830; 
+const ACCESS_TOKEN = "glpat-5LcMxzZ6VHrXstH_WFMU"; 
 const SOURCE_BRANCH = "codemod-split-modules"; 
 const TARGET_BRANCH = "main";
 const TITLE = "Split Modules and Import Resolution MR";
