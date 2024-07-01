@@ -63,7 +63,6 @@ async function runScripts() {
             throw new Error('First script failed.');
         }
 
-        // console.log(`First script output: ${firstStdout}`);
         console.log('First script executed successfully. Now running the second script.');
 
         console.log(`Running second script: ${secondScript}`);
@@ -74,7 +73,6 @@ async function runScripts() {
             throw new Error('Second script failed.');
         }
 
-        // console.log(`Second script output: ${secondStdout}`);
         console.log('Second script executed successfully.');
         if(mergeRequest) {
           const { stdout: thirdStdout, stderr: thirdStderr } = await execPromise(`node script-gitlab-mr.mjs`);
