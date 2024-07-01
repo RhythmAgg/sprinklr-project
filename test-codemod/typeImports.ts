@@ -1,0 +1,1 @@
+import type { ColorPickerOverrides } from "./index";
