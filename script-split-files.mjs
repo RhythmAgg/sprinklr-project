@@ -887,15 +887,14 @@ function modifyReExportSources(
         } else if (exportSource[0] == '.' && exportSource[1] == '.') {
           newExportSource = '../' + exportSource;
         }
-        
-        j(pth).replaceWith(
-          j.exportNamedDeclaration(
-            null,
-            pth.node.specifiers,
-            j.literal(newExportSource),
-            exportKind
-          )
-        );
+        const newExport = j.exportNamedDeclaration(
+          null,
+          pth.node.specifiers,
+          j.literal(newExportSource),
+          exportKind
+        )
+        newExport.exportKind = exportKind
+        j(pth).replaceWith(newExport);
       }
     });
 
@@ -912,12 +911,9 @@ function modifyReExportSources(
           newExportSource = '../' + exportSource;
         }
 
-        const newExport = j.exportAllDeclaration(
-          j.literal(newExportSource),
-        )
-        newExport.exportKind = 'type';
+        pth.node.source.value = newExportSource
         
-        j(pth).replaceWith(newExport)
+        j(pth).replaceWith(pth.node)
       }
     });
 }

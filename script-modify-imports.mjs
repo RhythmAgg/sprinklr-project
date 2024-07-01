@@ -138,13 +138,15 @@ function modifyWildcardImports(root, j, filePath) {
             // TODO: How to resolve wildcard type imports
             if(absSrc in utilsTypes) {
                 for(const type in utilsTypes[absSrc]) {
-                    if(type != 'reExportTypes') {
-                        wildcardImportReplacements.push(createNamedImport(j, type, type, node.source.value, 'type'))
-                        wildcardImportReplacementsNames.push(type)
-                    }else {
-                        for(const reType in utilsTypes[absSrc][type]) {
-                            wildcardImportReplacements.push(createNamedImport(j, reType, reType, node.source.value, 'type'))
-                            wildcardImportReplacementsNames.push(reType)
+                    if(type != 'CREATE_UTILS_OPTION') {
+                        if(type != 'reExportTypes') {
+                            wildcardImportReplacements.push(createNamedImport(j, type, type, node.source.value, 'type'))
+                            wildcardImportReplacementsNames.push(type)
+                        }else {
+                            for(const reType in utilsTypes[absSrc][type]) {
+                                wildcardImportReplacements.push(createNamedImport(j, reType, reType, node.source.value, 'type'))
+                                wildcardImportReplacementsNames.push(reType)
+                            }
                         }
                     }
                 }
@@ -153,10 +155,12 @@ function modifyWildcardImports(root, j, filePath) {
         else if(specifier.type === 'ImportNamespaceSpecifier') {
             if(absSrc in utilsExports) {
                 for(const exp in utilsExports[absSrc]) {
-                    if(utilsExports[absSrc][exp].type === 'named') {
-                        wildcardImportReplacements.push(createNamedImport(j, exp,exp, node.source.value))
+                    if(exp != 'CREATE_UTILS_OPTION') {
+                        if(utilsExports[absSrc][exp].type === 'named') {
+                            wildcardImportReplacements.push(createNamedImport(j, exp,exp, node.source.value))
+                        }
+                        wildcardImportReplacementsNames.push(exp)
                     }
-                    wildcardImportReplacementsNames.push(exp)
                 }
             }
             if(absSrc in utilsReExports) {
