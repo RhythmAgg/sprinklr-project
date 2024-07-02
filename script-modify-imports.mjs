@@ -153,20 +153,23 @@ function modifyWildcardImports(root, j, filePath) {
             }
         }
         else if(specifier.type === 'ImportNamespaceSpecifier') {
+            const properties = replaceObjectReferences(root, j, importName)
             if(absSrc in utilsExports) {
                 for(const exp in utilsExports[absSrc]) {
                     if(exp != 'CREATE_UTILS_OPTION') {
-                        if(utilsExports[absSrc][exp].type === 'named') {
+                        if(properties.has(exp) && utilsExports[absSrc][exp].type === 'named') {
                             wildcardImportReplacements.push(createNamedImport(j, exp,exp, node.source.value))
+                            wildcardImportReplacementsNames.push(exp)
                         }
-                        wildcardImportReplacementsNames.push(exp)
                     }
                 }
             }
             if(absSrc in utilsReExports) {
                 for(const exp in utilsReExports[absSrc]) {
-                    wildcardImportReplacements.push(createNamedImport(j, exp, exp, node.source.value))
-                    wildcardImportReplacementsNames.push(exp)
+                    if(properties.has(exp)) {
+                        wildcardImportReplacements.push(createNamedImport(j, exp, exp, node.source.value))
+                        wildcardImportReplacementsNames.push(exp)
+                    }
                 }
             }
             if(wildcardImportReplacements.length > 0) {
