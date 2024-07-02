@@ -15,11 +15,11 @@ try {
 }
 
 const argv = yargs(hideBin(process.argv))
-  .option('splitDir', {
-    alias: 's',
+  .option('targetModule', {
+    alias: 't',
     type: 'string',
-    description: 'The directory to split the target modules',
-    default: config.splitDir,
+    description: 'The target module to split',
+    default: config.targetModule,
     demandOption: true
   })
   .option('modifyDir', {
@@ -29,33 +29,13 @@ const argv = yargs(hideBin(process.argv))
     default: config.modifyDir,
     demandOption: true
   })
-  .option('targetName', {
-    alias: 't',
-    type: 'string',
-    description: 'The target name of the modules to split',
-    default: config.targetName
-  })
-  .option('createUtils', {
-    alias: 'c',
-    type: 'boolean',
-    description: 'Flag to create utils sub directory',
-    default: config.createUtils
-  })
-  .option('mergeRequest', {
-    alias: 'mr',
-    type: 'boolean',
-    description: 'Create MR request using gitlab-mr script',
-    default: config.mergeRequest
-  })
   .help()
   .alias('help', 'h')
   .argv;
 
 const splitDir = argv.splitDir;
 const modifyDir = argv.modifyDir;
-const targetName = argv.targetName;
-const createUtils = argv.createUtils;
-const mergeRequest = argv.mergeRequest;
+const mergeRequest = false
 
 const execPromise = promisify(exec);
 
@@ -68,7 +48,7 @@ const maxBuffer = 1024 * 1024;
 async function runScripts() {
     try {
         console.log(`Running first script: ${firstScript}`);
-        const { stderr: firstStderr } = await execPromise(`jscodeshift -t ${firstScript} ${splitDir} --targetName ${targetName} --createUtils ${createUtils}`, {maxBuffer});
+        const { stderr: firstStderr } = await execPromise(`jscodeshift -t ${firstScript} ${targetModule}`, {maxBuffer});
         
         if (firstStderr) {
             console.error(`Error in first script: ${firstStderr}`);

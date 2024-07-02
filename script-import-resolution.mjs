@@ -135,30 +135,36 @@ function modifyWildcardImports(root, j, filePath) {
         const absSrc = resolveSrcPath(node.source.value, filePath)
         const importName = specifier.local.name
         if(specifier.type === 'ImportNamespaceSpecifier' && node.importKind === 'type') {
-            // TODO: How to resolve wildcard type imports
+            const properties = replaceObjectReferences(root, j, importName, false)
             if(absSrc in utilsTypes) {
                 for(const type in utilsTypes[absSrc]) {
                     if(type != 'CREATE_UTILS_OPTION') {
-                        if(type != 'reExportTypes') {
-                            wildcardImportReplacements.push(createNamedImport(j, type, type, node.source.value, 'type'))
+                        if(type != 'reExportTypes' && properties.has(type)) {
+                            wildcardImportReplacements.push(createNamedImport(j, type, `${type}From${importName}`, node.source.value, 'type'))
                             wildcardImportReplacementsNames.push(type)
                         }else {
                             for(const reType in utilsTypes[absSrc][type]) {
-                                wildcardImportReplacements.push(createNamedImport(j, reType, reType, node.source.value, 'type'))
-                                wildcardImportReplacementsNames.push(reType)
+                                if(properties.has(reType)) {
+                                    wildcardImportReplacements.push(createNamedImport(j, reType, `${reType}From${importName}`, node.source.value, 'type'))
+                                    wildcardImportReplacementsNames.push(reType)
+                                }
                             }
                         }
                     }
                 }
             }
+            if(wildcardImportReplacements.length > 0) {
+                replaceObjectReferences(root, j, importName, true)
+                j(pth).replaceWith(wildcardImportReplacements);
+            }
         }
         else if(specifier.type === 'ImportNamespaceSpecifier') {
-            const properties = replaceObjectReferences(root, j, importName)
+            const properties = replaceObjectReferences(root, j, importName, false)
             if(absSrc in utilsExports) {
                 for(const exp in utilsExports[absSrc]) {
                     if(exp != 'CREATE_UTILS_OPTION') {
                         if(properties.has(exp) && utilsExports[absSrc][exp].type === 'named') {
-                            wildcardImportReplacements.push(createNamedImport(j, exp,exp, node.source.value))
+                            wildcardImportReplacements.push(createNamedImport(j, exp,`${exp}From${importName}`, node.source.value))
                             wildcardImportReplacementsNames.push(exp)
                         }
                     }
@@ -167,25 +173,13 @@ function modifyWildcardImports(root, j, filePath) {
             if(absSrc in utilsReExports) {
                 for(const exp in utilsReExports[absSrc]) {
                     if(properties.has(exp)) {
-                        wildcardImportReplacements.push(createNamedImport(j, exp, exp, node.source.value))
+                        wildcardImportReplacements.push(createNamedImport(j, exp, `${exp}From${importName}`, node.source.value))
                         wildcardImportReplacementsNames.push(exp)
                     }
                 }
             }
             if(wildcardImportReplacements.length > 0) {
-                const variableDeclarator = j.variableDeclarator(
-                    j.identifier(importName),
-                    j.objectExpression(
-                        wildcardImportReplacementsNames.map(key => 
-                        j.property(
-                        'init',
-                        j.identifier(key),
-                        j.identifier(key)
-                        )
-                    ))
-                );
-                const variableDeclaration = j.variableDeclaration('const', [variableDeclarator]);
-                wildcardImportReplacements.push(variableDeclaration)
+                replaceObjectReferences(root, j, importName, true)
                 j(pth).replaceWith(wildcardImportReplacements);
             }
         }
@@ -249,7 +243,7 @@ function splitImportDeclarations(root, j, filePath) {
 
 
 
-function replaceObjectReferences(root, j, obj) {
+function replaceObjectReferences(root, j, obj, replace = true) {
     const propertyNames = new Set();
 
     root.find(j.MemberExpression, {
@@ -261,9 +255,11 @@ function replaceObjectReferences(root, j, obj) {
 
         if (memberExpression.property.type === 'Identifier') {
         const prop = memberExpression.property.name;
+        const propAlias = `${prop}From${obj}`
 
         propertyNames.add(prop);
-
+        if(replace)
+            j(pth).replaceWith(j.identifier(propAlias));
         }
     });
 
@@ -344,13 +340,14 @@ function modifyImport(
         const properties = replaceObjectReferences(root, j, localName)
         const importNodes = Array.from(properties).map((prop) => {
             let relativePath = pth.node.source.value
+            const propAlias = `${prop}From${localName}`
             const importIsFromIndex = fileNameWithExtension.includes('index')
             const replacement = utilsDir
                                     ?`${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}/utils/${prop}`
                                     :`${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}/${prop}`
                                 
             return j.importDeclaration(
-                [j.importDefaultSpecifier(j.identifier(prop))],
+                [j.importDefaultSpecifier(j.identifier(propAlias))],
                 j.stringLiteral(replaceFileName(relativePath, replacement, importIsFromIndex))
             )
         });
@@ -358,24 +355,6 @@ function modifyImport(
         importNodes.forEach((importNode) => {
             j(pth).insertBefore(importNode);
         });
-
-        const objObjectExpression = j.objectExpression(
-            Array.from(properties).map(prop => (
-            j.property(
-                'init',
-                j.identifier(prop),
-                j.identifier(prop)
-            )
-            ))
-        );
-
-        const objConstantDeclaration = j.variableDeclaration('const', [
-            j.variableDeclarator(
-            j.identifier(localName),
-            objObjectExpression
-            )
-        ]);
-        j(pth).insertBefore(objConstantDeclaration);
       }
       else{
         let relativePath = pth.node.source.value

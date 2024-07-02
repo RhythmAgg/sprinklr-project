@@ -13,7 +13,6 @@ let helperCounts = {}
 let fileExtension = ''
 let currentAbsPath = ''
 const PROJECT_DIRECTORY = __dirname
-let utilsName = process.argv;
 let createUtils = ''
 
 // Finds the non-export type aliases at the module scope
@@ -1179,28 +1178,25 @@ export default (fileName, api, options) => {
     const j = api.jscodeshift;
     const root = j(fileName.source); 
 
-    utilsName = options.targetName
-    createUtils = options.createUtils
+    createUtils = false
 
     const fileNameWithExtension = path.basename(fileName.path);
 
     const fileNameWithoutExtension = path.parse(fileNameWithExtension).name;
     
-    if(path.basename(fileName.path).includes(utilsName)) {
-      ENTRY_DIR = path.dirname(fileName.path)
-      newDirectory = path.join(ENTRY_DIR, `${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}`)
-      if (fs.existsSync(newDirectory)) {
-        const stats = fs.statSync(newDirectory);
-        if (!stats.isDirectory()) {
-          fs.mkdirSync(newDirectory)
-        }
-      } else {
-          fs.mkdirSync(newDirectory)
+    ENTRY_DIR = path.dirname(fileName.path)
+    newDirectory = path.join(ENTRY_DIR, `${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}`)
+    if (fs.existsSync(newDirectory)) {
+      const stats = fs.statSync(newDirectory);
+      if (!stats.isDirectory()) {
+        fs.mkdirSync(newDirectory)
       }
-      const itemPath = path.join(PROJECT_DIRECTORY, fileName.path);
-      fileExtension = path.extname(itemPath)
-
-      processExports(itemPath, j);
+    } else {
+        fs.mkdirSync(newDirectory)
     }
+    const itemPath = path.join(PROJECT_DIRECTORY, fileName.path);
+    fileExtension = path.extname(itemPath)
+
+    processExports(itemPath, j);
     return root.toSource();
   };
