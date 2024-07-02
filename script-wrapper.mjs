@@ -1,38 +1,51 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import yargs from 'yargs/yargs';
+import * as fs from 'fs'
 import { hideBin } from 'yargs/helpers';
+
+const configPath = './wrapper.config.json';
+let config = {};
+
+try {
+  const configFile = fs.readFileSync(configPath, 'utf-8');
+  config = JSON.parse(configFile);
+} catch (error) {
+  console.error(`Error reading config file: ${error.message}`);
+}
 
 const argv = yargs(hideBin(process.argv))
   .option('splitDir', {
     alias: 's',
     type: 'string',
     description: 'The directory to split the target modules',
+    default: config.splitDir,
     demandOption: true
   })
   .option('modifyDir', {
     alias: 'm',
     type: 'string',
     description: 'The directory to modify imports',
+    default: config.modifyDir,
     demandOption: true
   })
   .option('targetName', {
     alias: 't',
     type: 'string',
     description: 'The target name of the modules to split',
-    default: 'utils'
+    default: config.targetName
   })
   .option('createUtils', {
     alias: 'c',
     type: 'boolean',
     description: 'Flag to create utils sub directory',
-    default: false
+    default: config.createUtils
   })
   .option('mergeRequest', {
     alias: 'mr',
     type: 'boolean',
     description: 'Create MR request using gitlab-mr script',
-    default: false
+    default: config.mergeRequest
   })
   .help()
   .alias('help', 'h')

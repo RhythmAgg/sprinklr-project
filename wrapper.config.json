@@ -1,0 +1,7 @@
+{
+    "splitDir": "test-codemod",
+    "modifyDir": "test-codemod",
+    "targetName": "utils",
+    "createUtils": false,
+    "mergeRequest": false
+}
