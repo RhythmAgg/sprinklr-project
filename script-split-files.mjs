@@ -863,7 +863,7 @@ function replaceObjectMemberExpressions(
     .forEach(pth => {
       const { object, property } = pth.node;
       if ((object.type === 'Identifier' && objectExports.includes(object.name)) || object.type === 'ThisExpression') {
-        const replacement = `${property.name}_from_${object.type === 'ThisExpression'?'this':object.name}`
+        const replacement = `${property.name}From${object.type === 'ThisExpression'?'this':object.name}`
         propertiesAliases[replacement] = property.name 
         j(pth).replaceWith(j.identifier(replacement));
       }
