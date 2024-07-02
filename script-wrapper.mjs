@@ -60,7 +60,7 @@ const mergeRequest = argv.mergeRequest;
 const execPromise = promisify(exec);
 
 const firstScript = 'script-split-files.mjs';
-const secondScript = 'script-modify-imports.mjs';
+const secondScript = 'script-import-resolution.mjs';
 
 
 const maxBuffer = 1024 * 1024;
