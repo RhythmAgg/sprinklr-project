@@ -140,13 +140,13 @@ function modifyWildcardImports(root, j, filePath) {
             if(absSrc in utilsTypes) {
                 for(const type in utilsTypes[absSrc]) {
                     if(type != 'CREATE_UTILS_OPTION') {
-                        if(type != 'reExportTypes' && properties.has(type)) {
-                            wildcardImportReplacements.push(createNamedImport(j, type, `${type}From${importName}`, node.source.value, 'type'))
+                        if(type != 'reExportTypes' && (type in properties)) {
+                            wildcardImportReplacements.push(createNamedImport(j, type, properties[type], node.source.value, 'type'))
                             wildcardImportReplacementsNames.push(type)
                         }else {
                             for(const reType in utilsTypes[absSrc][type]) {
-                                if(properties.has(reType)) {
-                                    wildcardImportReplacements.push(createNamedImport(j, reType, `${reType}From${importName}`, node.source.value, 'type'))
+                                if(reType in properties) {
+                                    wildcardImportReplacements.push(createNamedImport(j, reType, properties[reType], node.source.value, 'type'))
                                     wildcardImportReplacementsNames.push(reType)
                                 }
                             }
@@ -164,8 +164,8 @@ function modifyWildcardImports(root, j, filePath) {
             if(absSrc in utilsExports) {
                 for(const exp in utilsExports[absSrc]) {
                     if(exp != 'CREATE_UTILS_OPTION') {
-                        if(properties.has(exp) && utilsExports[absSrc][exp].type === 'named') {
-                            wildcardImportReplacements.push(createNamedImport(j, exp,`${exp}From${importName}`, node.source.value))
+                        if((exp in properties) && utilsExports[absSrc][exp].type === 'named') {
+                            wildcardImportReplacements.push(createNamedImport(j, exp, properties[exp], node.source.value))
                             wildcardImportReplacementsNames.push(exp)
                         }
                     }
@@ -173,8 +173,8 @@ function modifyWildcardImports(root, j, filePath) {
             }
             if(absSrc in utilsReExports) {
                 for(const exp in utilsReExports[absSrc]) {
-                    if(properties.has(exp)) {
-                        wildcardImportReplacements.push(createNamedImport(j, exp, `${exp}From${importName}`, node.source.value))
+                    if(exp in properties) {
+                        wildcardImportReplacements.push(createNamedImport(j, exp, properties[exp], node.source.value))
                         wildcardImportReplacementsNames.push(exp)
                     }
                 }
@@ -281,44 +281,41 @@ function replaceObjectReferences(root, j, obj, replace = true) {
             const prop = memberExpression.property.name;
 
             propertyNames.add(prop);
-            if(replace) {
-                if(!(prop in scopeMap))
-                    scopeMap[prop] = []
-                const scope = j(pth).closestScope()
-                scopeMap[prop].push(scope)
-            }
+            if(!(prop in scopeMap))
+                scopeMap[prop] = []
+            const scope = j(pth).closestScope()
+            scopeMap[prop].push(scope)
         }
     });
-    if(replace) {
-        const replacements = {}
-        Array.from(propertyNames).forEach(prop => {
-            const identifiers = new Set()
-            scopeMap[prop].forEach(scope => {
-                collectIdentifiers(scope, prop, identifiers)
-            })
-            if(identifiers.has(prop)) {
-                replacements[prop] = `${obj}${capitalizeFirstLetter(prop)}`
-            }
-            else
-                replacements[prop] = prop
+    const replacements = {}
+    Array.from(propertyNames).forEach(prop => {
+        const identifiers = new Set()
+        scopeMap[prop].forEach(scope => {
+            collectIdentifiers(scope, prop, identifiers)
         })
+        if(identifiers.has(prop)) {
+            replacements[prop] = `${obj}${capitalizeFirstLetter(prop)}`
+        }
+        else
+            replacements[prop] = prop
+    })
+    if(replace) {
         root.find(j.MemberExpression, {
             object: {
                 name: obj, 
             },
         }).forEach((pth) => {
             const memberExpression = pth.node;
-    
+
             if (memberExpression.property.type === 'Identifier') {
                 const prop = memberExpression.property.name;
 
                 j(pth).replaceWith(j.identifier(replacements[prop]));
             }
         });
-        return replacements
     }
+    return replacements
 
-    return propertyNames;
 }
 
 // resolves the declarations which are re-exports of a target module
