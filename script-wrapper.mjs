@@ -33,7 +33,7 @@ const argv = yargs(hideBin(process.argv))
   .alias('help', 'h')
   .argv;
 
-const splitDir = argv.splitDir;
+const targetModule = argv.targetModule;
 const modifyDir = argv.modifyDir;
 const mergeRequest = false
 
