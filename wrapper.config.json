@@ -1,4 +1,0 @@
-{
-    "targetModule": "test-codemod/targetModule.js",
-    "modifyDir": "test-codemod"
-}

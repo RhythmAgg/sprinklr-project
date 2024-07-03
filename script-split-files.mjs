@@ -852,6 +852,12 @@ function splitImportDeclarations(root, j) {
   });
 }
 
+function capitalizeFirstLetter(name) {
+  if (!name) return ''; 
+  
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}
+
 // Create property Aliases for avoiding naming conflicts
 function replaceObjectMemberExpressions(
   root,
@@ -862,7 +868,7 @@ function replaceObjectMemberExpressions(
     .forEach(pth => {
       const { object, property } = pth.node;
       if ((object.type === 'Identifier' && objectExports.includes(object.name)) || object.type === 'ThisExpression') {
-        const replacement = `${property.name}From${object.type === 'ThisExpression'?'this':object.name}`
+        const replacement = `${object.type === 'ThisExpression'?'this':object.name}${capitalizeFirstLetter(property.name)}`
         propertiesAliases[replacement] = property.name 
         j(pth).replaceWith(j.identifier(replacement));
       }

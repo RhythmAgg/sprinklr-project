@@ -5,7 +5,8 @@ const PROJECT_DIRECTORY = __dirname
 const utilsExports = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'utils-exports.json')))
 const utilsReExports = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'utils-re-exports.json')))
 const utilsTypes = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'utils-types.json')))
-const tsconfig = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'tsconfig.json')))
+let tsconfig = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'tsconfig.json')))
+let tsconfigDir = PROJECT_DIRECTORY
 
 function isValidFileExtension(filePath) {
     return /\.(js|jsx|ts|tsx)$/.test(filePath);
@@ -241,7 +242,11 @@ function splitImportDeclarations(root, j, filePath) {
     });
 }
 
+function capitalizeFirstLetter(name) {
+    if (!name) return '';
 
+    return name.charAt(0).toUpperCase() + name.slice(1);
+}
 
 function replaceObjectReferences(root, j, obj, replace = true) {
     const propertyNames = new Set();
@@ -255,7 +260,7 @@ function replaceObjectReferences(root, j, obj, replace = true) {
 
         if (memberExpression.property.type === 'Identifier') {
         const prop = memberExpression.property.name;
-        const propAlias = `${prop}From${obj}`
+        const propAlias = `${obj}${capitalizeFirstLetter(prop)}`
 
         propertyNames.add(prop);
         if(replace)
@@ -340,7 +345,7 @@ function modifyImport(
         const properties = replaceObjectReferences(root, j, localName)
         const importNodes = Array.from(properties).map((prop) => {
             let relativePath = pth.node.source.value
-            const propAlias = `${prop}From${localName}`
+            const propAlias = `${localName}${capitalizeFirstLetter(prop)}`
             const importIsFromIndex = fileNameWithExtension.includes('index')
             const replacement = utilsDir
                                     ?`${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}/utils/${prop}`
@@ -429,7 +434,7 @@ function resolveTsConfigPath(src) {
         if (regex.test(src)) {
             let alias = paths[key][0].replace('*', '');
             src = src.replace(regex, alias + '$1')
-            return path.resolve(PROJECT_DIRECTORY, src.replace(regex, alias + '$1'));
+            return path.resolve(tsconfigDir, src.replace(regex, alias + '$1'));
         }
     }
 
@@ -442,7 +447,7 @@ function resolveSrcPath(src, filePath) {
     if (src[0] == '.' || src[0] == '/') {
         src = path.resolve(path.dirname(filePath), src);
     }else if(src[0] == '@' && src[1] == '/') {
-        src = path.join(PROJECT_DIRECTORY, src.slice(1));
+        src = path.join(tsconfigDir, src.slice(1));
     }else {
         let resolvedSrc = resolveTsConfigPath(src);
         if (resolvedSrc) {
@@ -655,18 +660,36 @@ export const parser = {
       });
     },
   }
+
+function findNearestTsconfig(startPath) {
+    let currentDir = startPath;
+
+    while (currentDir !== path.parse(currentDir).root) {
+        const tsconfigPath = path.join(currentDir, 'tsconfig.json');
+        if (fs.existsSync(tsconfigPath)) {
+            return tsconfigPath;
+        }
+        currentDir = path.dirname(currentDir);
+    }
+
+    return null;
+}
 export default (fileName, api) => {
-    const j = api.jscodeshift;
-    const root = j(fileName.source);
-    if(isValidFileExtension(fileName.path) && !(fileName.path.includes('node_modules'))) {
-        let moduleImports = new Set()
-        console.log(fileName.path)
+    if(!(fileName.path.includes('node_modules')) && isValidFileExtension(fileName.path)) {
+        const j = api.jscodeshift;
+        const root = j(fileName.source);
         const filePath = path.join(PROJECT_DIRECTORY, fileName.path);
+        const nearestTsConfigPath = findNearestTsconfig(path.dirname(filePath))
+        if(nearestTsConfigPath != null){
+            tsconfig = JSON.parse(fs.readFileSync(nearestTsConfigPath))
+            tsconfigDir = path.dirname(nearestTsConfigPath)
+        }
+        let moduleImports = new Set()
         splitImportDeclarations(root, j, filePath)
         splitExportDeclarations(root, j, filePath)
         modifyWildcardImports(root, j, filePath)
         modifyWildcardExports(root, j, filePath)
         getImportedModules(root, j, filePath, moduleImports)
+        return root.toSource();
     }
-    return root.toSource();
 };

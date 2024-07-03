@@ -1,32 +1,20 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import yargs from 'yargs/yargs';
-import * as fs from 'fs'
 import { hideBin } from 'yargs/helpers';
-
-const configPath = './wrapper.config.json';
-let config = {};
-
-try {
-  const configFile = fs.readFileSync(configPath, 'utf-8');
-  config = JSON.parse(configFile);
-} catch (error) {
-  console.error(`Error reading config file: ${error.message}`);
-}
 
 const argv = yargs(hideBin(process.argv))
   .option('targetModule', {
     alias: 't',
     type: 'string',
     description: 'The target module to split',
-    default: config.targetModule,
     demandOption: true
   })
   .option('modifyDir', {
     alias: 'm',
     type: 'string',
     description: 'The directory to modify imports',
-    default: config.modifyDir,
+    default: './',
     demandOption: true
   })
   .help()
