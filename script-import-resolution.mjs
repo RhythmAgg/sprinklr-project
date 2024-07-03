@@ -250,6 +250,25 @@ function capitalizeFirstLetter(name) {
 
 function replaceObjectReferences(root, j, obj, replace = true) {
     const propertyNames = new Set();
+    const scopeMap = {}
+
+    // Function to collect all identifiers in the given scope
+    function collectIdentifiers(scope, prop, identifiers) {
+        scope.find(j.Identifier).forEach((pth) => {
+            const parent = pth.parent.node;
+            if (
+                !(
+                    parent.type === 'MemberExpression' &&
+                    parent.property === pth.node
+                ) && !(
+                    parent.type === 'Property' &&
+                    parent.key === pth.node
+                )
+            ) {
+                identifiers.add(pth.node.name);
+            }
+        });
+    }
 
     root.find(j.MemberExpression, {
         object: {
@@ -259,14 +278,45 @@ function replaceObjectReferences(root, j, obj, replace = true) {
         const memberExpression = pth.node;
 
         if (memberExpression.property.type === 'Identifier') {
-        const prop = memberExpression.property.name;
-        const propAlias = `${obj}${capitalizeFirstLetter(prop)}`
+            const prop = memberExpression.property.name;
 
-        propertyNames.add(prop);
-        if(replace)
-            j(pth).replaceWith(j.identifier(propAlias));
+            propertyNames.add(prop);
+            if(replace) {
+                if(!(prop in scopeMap))
+                    scopeMap[prop] = []
+                const scope = j(pth).closestScope()
+                scopeMap[prop].push(scope)
+            }
         }
     });
+    if(replace) {
+        const replacements = {}
+        Array.from(propertyNames).forEach(prop => {
+            const identifiers = new Set()
+            scopeMap[prop].forEach(scope => {
+                collectIdentifiers(scope, prop, identifiers)
+            })
+            if(identifiers.has(prop)) {
+                replacements[prop] = `${obj}${capitalizeFirstLetter(prop)}`
+            }
+            else
+                replacements[prop] = prop
+        })
+        root.find(j.MemberExpression, {
+            object: {
+                name: obj, 
+            },
+        }).forEach((pth) => {
+            const memberExpression = pth.node;
+    
+            if (memberExpression.property.type === 'Identifier') {
+                const prop = memberExpression.property.name;
+
+                j(pth).replaceWith(j.identifier(replacements[prop]));
+            }
+        });
+        return replacements
+    }
 
     return propertyNames;
 }
@@ -343,9 +393,9 @@ function modifyImport(
       }
       if(utilsExports[importPath][importedName]?.obj) {
         const properties = replaceObjectReferences(root, j, localName)
-        const importNodes = Array.from(properties).map((prop) => {
+        const importNodes = Object.keys(properties).map((prop) => {
             let relativePath = pth.node.source.value
-            const propAlias = `${localName}${capitalizeFirstLetter(prop)}`
+            const propAlias = properties[prop]
             const importIsFromIndex = fileNameWithExtension.includes('index')
             const replacement = utilsDir
                                     ?`${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}/utils/${prop}`
