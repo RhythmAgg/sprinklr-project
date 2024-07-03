@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "paths": {
+      "test_package/*": ["./packages/*"],
       "baseui": ["./src"],
       "baseui/*": ["./src/*"],
       "@sprinklrjs/modules/*": ["../../packages/modules/src/*"],

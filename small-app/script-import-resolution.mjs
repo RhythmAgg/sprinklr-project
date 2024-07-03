@@ -2,10 +2,10 @@ import * as fs from 'fs'
 import path from 'path'
 import { parse } from '@babel/parser';
 const PROJECT_DIRECTORY = __dirname
-const utilsExports = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'utils-exports.json')))
-const utilsReExports = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'utils-re-exports.json')))
-const utilsTypes = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'utils-types.json')))
-const tsconfig = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, 'tsconfig.json')))
+const utilsExports = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, '../utils-exports.json')))
+const utilsReExports = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, '../utils-re-exports.json')))
+const utilsTypes = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, '../utils-types.json')))
+const tsconfig = JSON.parse(fs.readFileSync(path.resolve(PROJECT_DIRECTORY, '../tsconfig.json')))
 
 function isValidFileExtension(filePath) {
     return /\.(js|jsx|ts|tsx)$/.test(filePath);
@@ -658,15 +658,16 @@ export const parser = {
 export default (fileName, api) => {
     const j = api.jscodeshift;
     const root = j(fileName.source);
-    if(isValidFileExtension(fileName.path) && !(fileName.path.includes('node_modules'))) {
+    if(isValidFileExtension(fileName.path)) {
         let moduleImports = new Set()
         console.log(fileName.path)
         const filePath = path.join(PROJECT_DIRECTORY, fileName.path);
-        splitImportDeclarations(root, j, filePath)
-        splitExportDeclarations(root, j, filePath)
-        modifyWildcardImports(root, j, filePath)
-        modifyWildcardExports(root, j, filePath)
-        getImportedModules(root, j, filePath, moduleImports)
+        console.log(PROJECT_DIRECTORY, filePath)
+        // splitImportDeclarations(root, j, filePath)
+        // splitExportDeclarations(root, j, filePath)
+        // modifyWildcardImports(root, j, filePath)
+        // modifyWildcardExports(root, j, filePath)
+        // getImportedModules(root, j, filePath, moduleImports)
     }
     return root.toSource();
 };
