@@ -449,19 +449,21 @@ function modifyExport(
     specifiers.forEach(specifier => {
         const localName = specifier.local.name
         const exportedName = specifier.exported?specifier.exported.name:localName
-        let relativePath = pth.node.source.value
-        const replacement = utilsDir
-                                ?`${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}/utils/${utilsExports[importPath][localName]?.exported}`
-                                :`${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}/${utilsExports[importPath][localName]?.exported}`
-        const exportIsFromIndex = fileNameWithExtension.includes('index')
-        const newSrc = replaceFileName(relativePath, replacement, exportIsFromIndex)
-        const modifiedNode = j.exportNamedDeclaration(
-            null,
-            [specifier],
-            j.stringLiteral(newSrc)
-        );
+        if(!utilsExports[importPath][localName]?.obj) {
+            let relativePath = pth.node.source.value
+            const replacement = utilsDir
+                                    ?`${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}/utils/${utilsExports[importPath][localName]?.exported}`
+                                    :`${fileNameWithoutExtension != 'index'?fileNameWithoutExtension:'utils'}/${utilsExports[importPath][localName]?.exported}`
+            const exportIsFromIndex = fileNameWithExtension.includes('index')
+            const newSrc = replaceFileName(relativePath, replacement, exportIsFromIndex)
+            const modifiedNode = j.exportNamedDeclaration(
+                null,
+                [specifier],
+                j.stringLiteral(newSrc)
+            );
 
-        j(pth).insertAfter(modifiedNode);
+            j(pth).insertAfter(modifiedNode);
+        }
     });
 
     j(pth).remove();
