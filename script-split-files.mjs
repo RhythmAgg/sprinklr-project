@@ -1,6 +1,7 @@
 import * as fs from 'fs'
 import path from 'path'
 import { parse } from '@babel/parser';
+// global variables used to avoid arguement drilling
 let ENTRY_DIR = ''
 let newDirectory = ''
 let fileExports = {}
